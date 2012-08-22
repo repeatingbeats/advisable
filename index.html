@@ -1,0 +1,296 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>advisable.js by repeatingbeats</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>advisable.js</h1>
+        <p>Functional JS mixins for sync and async aspect-oriented advice</p>
+        <p class="view"><a href="https://github.com/repeatingbeats/advisable">View the Project on GitHub <small>repeatingbeats/advisable</small></a></p>
+        <ul>
+          <li><a href="https://github.com/repeatingbeats/advisable/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/repeatingbeats/advisable/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/repeatingbeats/advisable">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>advisable.js</h1>
+
+<p><strong>advisable.js</strong> is an implementation of functional mixins for synchronous and asynchronous before/after/around aspect-oriented advice. It is heavily inspired by a <a href="https://speakerdeck.com/u/anguscroll/p/how-we-learned-to-stop-worrying-and-love-javascript">talk on functional mixins</a> by <a href="https://twitter.com/danwrong">Dan Webb</a> and <a href="https://twitter.com/angustweets">Angus Croll</a> at <a href="http://fluentconf.com/fluent2012">FluentConf 2012</a>.</p>
+
+<p>This is certainly not the first JS implementation of advice, nor even the first implementation derived from patterns presented in the FluentConf talk. The goals and motivations behind reinventing this particular wheel are:</p>
+
+<ul>
+<li><p>Adherence to Node.js idioms (sync/async method separation, synchronous versions of methods appended with <code>Sync</code>, callbacks take errors as the first argument by convention).</p></li>
+<li><p>Clear, consistent calling semantics for declaring whether or not advice mutates arguments and return values.</p></li>
+<li><p>Thorough testing. This library injects intermediary methods into call chains and is intended to be used widely to modularize code in applications. As such, extensive testing of all expected use cases is a requirement.</p></li>
+</ul><h2>Supported Environments</h2>
+
+<p><strong>advisable.js</strong> is tested in a Node.js environment and supports CommonJS or AMD before falling back to adding an <code>advisable</code> property on the global object. The library should work in any browser environment with no dependencies provided that either a native or shimmed implementation of <code>Function.prototype.bind</code> is available. Browser support is caveated with <em>should</em> as tests are not currently run in browsers.</p>
+
+<h2>Usage</h2>
+
+<p>The following usage examples are, quite obviously, contrived to show advice usage with simple arithmetic. In all examples, the object mixing in advisable methods is referred to as the target object, and the method receiving advice is the target method. All examples can be found and executed in <a href="https://github.com/repeatingbeats/advisable/blob/master/examples/advisable.js">examples/advisable.js</a></p>
+
+<p>The <code>mutate</code> option allows advice callers to declare whether or not advice mutates arguments and return values. <code>mutate</code> defaults to false and the options object may be omitted entirely. Note that this option specifically refers to argument/return value mutation, as advice methods are invoked in the context of the target object, which is mutable within all advice methods.</p>
+
+<p>advisable's around advice is a syntactic shortcut for advising a target with both before and after advise in a single method call. This isi unlike some other implementations, which pass the target function to a wrapper and expect the wrapper to invoke the target.</p>
+
+<p>First, we set up a very simple object with sync and async methods to advise:</p>
+
+<pre><code>function Target(val) {
+  this.val = val;
+}
+
+Target.prototype.syncFunc = function (a, b) {
+  return a + b + this.val;
+};
+
+Target.prototype.asyncFunc = function (a, b, callback) {
+  process.nextTick(function () {
+    callback(null, a + b + this.val);
+  }.bind(this));
+};
+</code></pre>
+
+<p>Advice methods are mixed in to a target object by invoking the functional mixin with the target object context.</p>
+
+<pre><code>// Sync/async advice is mixed in separately
+advisable.sync.call(Target.prototype);
+advisable.async.call(Target.prototype);
+</code></pre>
+
+<h3>Synchronous Usage</h3>
+
+<p>First, without advice:</p>
+
+<pre><code>target = new Target(1);
+
+// 10 + 100 + 1 =&gt; 111
+target.syncFunc(10, 100));
+</code></pre>
+
+<p>Before advice that changes target object state:</p>
+
+<pre><code>target = new Target(1);
+target.beforeSync('syncFunc', function (a, b) {
+  this.val++;
+});
+
+// 10 + 100 + 2 =&gt; 112
+target.syncFunc(10, 100);
+</code></pre>
+
+<p>Before advice that mutates arguments:</p>
+
+<pre><code>target = new Target(1);
+target.beforeSync('syncFunc', function (a, b) {
+  return [ a/10, b/10 ];
+}, { mutate: true });
+
+// 10/10 + 100/10 + 1 =&gt; 12
+target.syncFunc(10, 100);
+</code></pre>
+
+<p>After advice that changes target state but does not mutate return value:</p>
+
+<pre><code>target = new Target(1);
+target.afterSync('syncFunc', function (a, b) {
+  this.val--;
+});
+
+// 10 + 100 + 1 =&gt; 111 (original return value)
+target.syncFunc(10, 100));
+
+// But target.val is now 0 due to decrementing after advice
+</code></pre>
+
+<p>After advice that mutates a return value:</p>
+
+<pre><code>target = new Target(1);
+target.afterSync('syncFunc', function (v) {
+  return v * 2;
+}, { mutate: true });
+
+// (10/10 + 100/10 + 1) * 2 =&gt; 222
+target.syncFunc(10, 100);
+</code></pre>
+
+<p>Around advice that simply observes:</p>
+
+<pre><code>target = new Target(1);
+target.aroundSync(
+  'syncFunc'
+, function (a, b) {
+    console.log('around:before called with args: %d, %d', a, b);
+  }
+, function (a, b) {
+    console.log('around:after called with args: %d, %d', a, b);
+  }
+);
+
+// 10 + 100 + 1 =&gt; 111
+target.syncFunc(10, 100);
+</code></pre>
+
+<p>Around advice that mutates arguments and return value:</p>
+
+<pre><code>target = new Target(1);
+target.aroundSync(
+  'syncFunc'
+, function (a, b) {
+    return [ a * 3, b * 3 ];
+  }
+, function (v) {
+    return v + 123;
+  }
+, { mutate: true }
+);
+
+// ((10*3) + (100*3) + 1) + 123 =&gt; 454
+target.syncFunc(10, 100);
+</code></pre>
+
+<h3>Asynchronous Usage</h3>
+
+<p>First, without advice:</p>
+
+<pre><code>target = new Target(1);
+
+target.asyncFunc(10, 100, function (err, result) {
+  // result = 10 + 100 + 1 =&gt; 111
+});
+</code></pre>
+
+<p>Before advice that changes target object state:</p>
+
+<pre><code>target = new Target(1);
+target.before('asyncFunc', function (a, b, callback) {
+  this.val++;
+  // Non-mutated async advice must call back, but the error (first) argument
+  // is the only argument considered.
+  callback();
+});
+
+target.asyncFunc(10, 100, function (err, result) {
+  // result = 10 + 100 + 2 =&gt; 112
+});
+</code></pre>
+
+<p>Before advice that mutates arguments:</p>
+
+<pre><code>target = new Target(1);
+target.before('asyncFunc', function (a, b, callback) {
+  callback(null, a/10, b/10);
+}, { mutate: true });
+
+target.asyncFunc(10, 100, function (err, result) {
+  // result = 10/10 + 100/10 + 1 =&gt; 12
+});
+</code></pre>
+
+<p>After advice that changes target object state:</p>
+
+<pre><code>target = new Target(1);
+target.after('asyncFunc', function (a, b, callback) {
+  this.val--;
+  callback();
+});
+
+target.asyncFunc(10, 100, function (err, result) {
+  // result = 10 + 100 + 1 =&gt; 111 (original return value)
+  // target.val is now 0 (assuming, of course, that no one else changed it)
+});
+</code></pre>
+
+<p>After advice that mutates the return value:</p>
+
+<pre><code>target = new Target(1);
+target.after('asyncFunc', function (v, callback) {
+  callback(null, v * 2);
+}, { mutate: true });
+
+target.asyncFunc(10, 100, function (err, result) {
+  // result = (10/10 + 100/10 + 1) * 2 =&gt; 222
+});
+</code></pre>
+
+<p>Around advice that simply observes:</p>
+
+<pre><code>target = new Target(1);
+target.around(
+  'asyncFunc'
+, function (a, b, callback) {
+    console.log('around:before called with args: %d, %d', a, b);
+    callback();
+  }
+, function (a, b, callback) {
+    console.log('around:after called with args: %d, %d', a, b);
+    callback();
+  }
+);
+
+target.asyncFunc(10, 100, function (err, result) {
+  // result = 10 + 100 + 1 =&gt; 111
+});
+</code></pre>
+
+<p>Around advice that mutates arguments and return value:</p>
+
+<pre><code>target = new Target(1);
+target.around(
+  'asyncFunc'
+, function (a, b, callback) {
+    callback(null, a * 3, b * 3);
+  }
+, function (v, callback) {
+    callback(null, v + 123);
+  }
+, { mutate: true }
+);
+
+target.asyncFunc(10, 100, function (err, result) {
+  // result = ((10*3) + (100*3) + 1) + 123 =&gt; 454
+});
+</code></pre>
+
+<h2>API</h2>
+
+<p>For now, see inline documentation in <a href="https://github.com/repeatingbeats/advisable/blob/master/lib/advisable.js">advisable.js</a></p>
+
+<h2>Testing</h2>
+
+<pre><code>$ make test
+</code></pre>
+
+<h2>Linting</h2>
+
+<pre><code>$ make lint
+</code></pre>
+
+<h2>License</h2>
+
+<p>advisable.js is MIT licensed. See <a href="https://github.com/repeatingbeats/advisable/blob/master/LICENSE">LICENSE</a>.</p>
+      </section>
+    </div>
+    <footer>
+      <p>Project maintained by <a href="https://github.com/repeatingbeats">repeatingbeats</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
