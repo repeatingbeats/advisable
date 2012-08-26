@@ -1,3 +1,8 @@
+0.1.2 / 2012-08-25
+==================
+
+  * No functional changes. Cleans up some accidentally published patch files.
+
 0.1.1 / 2012-08-25
 ==================
 
