@@ -20,7 +20,7 @@ The following usage examples are, quite obviously, contrived to show advice usag
 
 The `mutate` option allows advice callers to declare whether or not advice mutates arguments and return values. `mutate` defaults to false and the options object may be omitted entirely. Note that this option specifically refers to argument/return value mutation, as advice methods are invoked in the context of the target object, which is mutable within all advice methods.
 
-advisable's around advice is a syntactic shortcut for advising a target with both before and after advise in a single method call. This isi unlike some other implementations, which pass the target function to a wrapper and expect the wrapper to invoke the target.
+advisable's around advice is a syntactic shortcut for advising a target with both before and after advise in a single method call. This is unlike some other implementations, which pass the target function to a wrapper and expect the wrapper to invoke the target.
 
 First, we set up a very simple object with sync and async methods to advise:
 
