@@ -1,6 +1,6 @@
 GRUNT :=./node_modules/.bin/grunt
 MOCHA :=./node_modules/.bin/mocha
-TESTS := test/unit.mocha.js
+TESTS := test/*.mocha.js
 
 lint:
 	$(GRUNT) lint

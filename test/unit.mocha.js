@@ -1,8 +1,15 @@
+/**
+ * unit.mocha.js
+ *
+ * Unit tests with stubbing at every step in the call chain to assert
+ * expectations on both function call arguments and return values.
+ */
+
 var path = require('path')
   , sinon = require('sinon')
   , advisable = require(path.resolve(__dirname, '..', 'lib', 'advisable'));
 
-describe('advisable', function () {
+describe('advisable:unit', function () {
 
   beforeEach(function () {
     this.target = sinon.stub();
