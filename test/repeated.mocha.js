@@ -254,6 +254,38 @@ describe('advisable:repeated', function () {
 
     });
 
+    describe('.wrap', function () {
+
+      beforeEach(function () {
+        this.target.wrap('asyncFunc', function (wrapped, a, callback) {
+          this.v++;
+          wrapped(a + this.v, function (err, result) {
+            if (err) return callback(err);
+
+            this.v++;
+            callback(null, result + this.v);
+          }.bind(this));
+        });
+      });
+
+      [ 1, 2, 3, 4, 5 ].forEach(function (n) {
+
+        // before: inc to (2 * n - 1), call back with 0 + (2 * n - 1)
+        // target: call back with 2 * (2 * n - 1)
+        // after:  inc to (2 * n), call back with (2 * n) + (2 * (2 * n - 1))
+
+        it('passes results for ' + n + ' invocations', function (done) {
+          repeat.bind(this)(n, checkResult(6 * n - 2, done));
+        });
+
+        it('maintains state for ' + n + ' invocations', function (done) {
+          repeat.bind(this)(n, checkVal.bind(this)(2 * n, done));
+        });
+
+      });
+
+    });
+
   });
 
 });

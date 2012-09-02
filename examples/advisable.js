@@ -141,6 +141,22 @@ target.aroundSync(
 console.log('syncFunc, mutated around advice: %d', target.syncFunc(10, 100));
 
 // -----------------------------------------------------------------------------
+
+// Synchronous wrap
+target = new Target(1);
+target.wrapSync('syncFunc', function (wrapped, a, b) {
+  var targetRv;
+
+  this.val++;
+  targetRv = wrapped(a * 3, b * 3);
+
+  return targetRv + 123;
+});
+
+// ((10*3) + (100*3) + 1 + 1) + 123 => 455
+console.log('syncFunc, wrapped: %d', target.syncFunc(10, 100));
+
+// -----------------------------------------------------------------------------
 //
 // Asynchronous Advice Examples
 //
@@ -252,5 +268,25 @@ target.around(
 
 // ((10*3) + (100*3) + 1) + 123 => 454
 target.asyncFunc(10, 100, function (err, result) {
-  console.log('syncFunc, mutated around advice: %d', result);
+  console.log('asyncFunc, mutated around advice: %d', result);
+});
+
+// -----------------------------------------------------------------------------
+
+// Asynchronous wrap
+target = new Target(1);
+target.wrap('asyncFunc', function (wrapped, a, b, callback) {
+  this.val++;
+  wrapped(a * 3, b * 3, function (err, result) {
+    if (err) return callback(err);
+
+    process.nextTick(function () {
+      callback(null, result + 123);
+    });
+  });
+});
+
+// ((10*3) + (100*3) + 1 + 1) + 123 => 455
+target.asyncFunc(10, 100, function (err, result) {
+  console.log('asyncFunc, wrapped: %d', result);
 });

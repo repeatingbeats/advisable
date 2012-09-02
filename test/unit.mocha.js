@@ -83,7 +83,7 @@ describe('advisable:unit', function () {
             this.before.should.have.been.calledWithExactly(1, 2, 3);
           });
 
-          it('invokes before advice in the target object context', function () {
+          it('invokes before advice in the target context', function () {
             this.obj.target(1, 2, 3);
 
             this.before.lastCall.thisValue.should.equal(this.obj);
@@ -180,7 +180,7 @@ describe('advisable:unit', function () {
             this.before.should.have.been.calledWithExactly(1, 2, 3);
           });
 
-          it('invokes before advice in the target object context', function () {
+          it('invokes before advice in the target context', function () {
             this.obj.target(1, 2, 3);
 
             this.before.lastCall.thisValue.should.equal(this.obj);
@@ -469,7 +469,7 @@ describe('advisable:unit', function () {
             this.before.should.have.been.calledWithExactly(1, 2, 3);
           });
 
-          it('invokes before advice in the target object contest', function () {
+          it('invokes before advice in the target context', function () {
             this.obj.target(1, 2, 3);
 
             this.before.lastCall.thisValue.should.equal(this.obj);
@@ -732,6 +732,170 @@ describe('advisable:unit', function () {
 
             });
 
+          });
+
+        });
+
+      });
+
+    });
+
+    describe('.wrapSync', function () {
+
+      beforeEach(function () {
+        var self = this;
+
+        this.wa = 'wrapper-modified-arg-a';
+        this.wb = 'wrapper-modified-arg-b';
+        this.wc = 'wrapper-modified-arg-c';
+        this.wrv = 'wrapper-modified-return-value';
+        this.rv = null;
+
+        this.wrapper = function (wrapped, a, b, c) {
+          self.rv = wrapped(self.wa, self.wb, self.wc);
+
+          return self.wrv;
+        };
+        sinon.spy(this, 'wrapper');
+
+        this.obj.wrapSync('target', this.wrapper);
+      });
+
+      describe('when the target method is invoked', function () {
+
+        it('invokes the wrapper with the target as first arg', function () {
+          // Stub out auto-binding
+          sinon.stub(this.target, 'bind').returns(this.target);
+          this.obj.target(1, 2, 3);
+
+          this.wrapper.should.have.been.calledWithExactly(
+            this.target
+           , 1
+           , 2
+           , 3
+           );
+        });
+
+        it('invokes the wrapper in the target context', function () {
+          this.obj.target(1, 2, 3);
+
+          this.wrapper.lastCall.thisValue.should.equal(this.obj);
+        });
+
+        describe('when the wrapper invokes the target', function () {
+
+          it('can modify the arguments', function () {
+            this.obj.target(1, 2, 3);
+
+            this.target.should.have.been.calledWithExactly(
+              this.wa
+            , this.wb
+            , this.wc
+            );
+          });
+
+          it('invokes in the target context', function () {
+            this.obj.target(1, 2, 3);
+
+            this.target.lastCall.thisValue.should.equal(this.obj);
+          });
+
+          describe('when the wrapped target returns', function () {
+
+            beforeEach(function () {
+              this.retval = 'wrapSync-target-return';
+              this.target.returns(this.retval);
+            });
+
+            it('supplies a return value to the wrapper', function () {
+              this.obj.target(1, 2, 3);
+
+              this.rv.should.equal(this.retval);
+            });
+
+          });
+
+          describe('when the wrapper returns', function () {
+
+            it('supplies the wrapper return value', function () {
+              this.obj.target(1, 2, 3).should.equal(this.wrv);
+            });
+
+          });
+
+        });
+
+        describe('when the wrapper throws', function () {
+
+          beforeEach(function () {
+            this.error = 'wrapSync-throws';
+          });
+
+          describe('before calling the target', function () {
+
+            beforeEach(function () {
+              var self = this;
+
+              this.obj.wrapSync('target', function (wrapped, a, b, c) {
+                sinon.stub().throws(self.error)();
+
+                return wrapped(a, b, c);
+              });
+            });
+
+            it('throws the error', function () {
+              this.obj.target.should.throw(this.error);
+            });
+
+            it('does not call the target', function () {
+              try { this.obj.target(); } catch (e) {}
+
+              this.target.should.not.have.been.called;
+            });
+
+          });
+
+          describe('after calling the target', function () {
+
+            beforeEach(function () {
+              var self = this;
+
+              this.obj.wrapSync('target', function (wrapped, a, b, c) {
+                var rv = wrapped(a, b, c);
+
+                sinon.stub().throws(self.error)();
+
+                return rv;
+              });
+            });
+
+            it('calls the target', function () {
+              try { this.obj.target(1, 2, 3); } catch (e) {}
+
+              this.target.should.have.been.calledWithExactly(
+                this.wa
+              , this.wb
+              , this.wc
+              );
+            });
+
+            it('throws the error', function () {
+              this.obj.target.should.throw(this.error);
+            });
+
+          });
+
+        });
+
+        describe('when the target throws', function () {
+
+          beforeEach(function () {
+            this.error = 'wrapSync-target-throws';
+            this.target.throws(this.error);
+          });
+
+          it('throws the error', function () {
+            this.obj.target.should.throw(this.error);
           });
 
         });
@@ -1155,7 +1319,7 @@ describe('advisable:unit', function () {
 
         describe('when the target method is invoked', function () {
 
-          it('invokes the target method with the passed arguments', function () {
+          it('invokes with the passed arguments', function () {
             this.obj.target(1, 2, 3, function () {});
 
             this.target.should.have.been.calledWithExactly(
@@ -1613,6 +1777,121 @@ describe('advisable:unit', function () {
                   }.bind(this));
                 });
 
+              });
+
+            });
+
+          });
+
+        });
+
+      });
+
+    });
+
+    describe('.wrap', function () {
+
+      beforeEach(function () {
+        var self = this;
+
+        this.wa = 'wrapper-modified-arg-a';
+        this.wb = 'wrapper-modified-arg-b';
+        this.wc = 'wrapper-modified-arg-c';
+        this.wrv = 'wrapper-modified-return-value';
+        this.rv = null;
+
+        this.wrapper = function (wrapped, a, b, c, callback) {
+          wrapped(self.wa, self.wb, self.wc, function (err, result) {
+            if (err) return callback(err);
+
+            self.rv = result;
+            process.nextTick(function () {
+              callback(null, self.wrv);
+            });
+          });
+        };
+        sinon.spy(this, 'wrapper');
+        this.callback = sinon.stub();
+
+        this.obj.wrap('target', this.wrapper);
+      });
+
+      describe('when the target method is invoked', function () {
+
+        it('invokes the wrapper with the target as first arg', function () {
+          // Stub out auto-binding
+          sinon.stub(this.target, 'bind').returns(this.target);
+          this.obj.target(1, 2, 3, this.callback);
+
+          this.wrapper.should.have.been.calledWithExactly(
+            this.target
+          , 1
+          , 2
+          , 3
+          , this.callback
+          );
+        });
+
+        it('invokes the wrapper in the target context', function () {
+          this.obj.target(1, 2, 3, this.callback);
+
+          this.wrapper.lastCall.thisValue.should.equal(this.obj);
+        });
+
+        describe('when the wrapper invokes the target', function () {
+
+          it('can modify the arguments', function () {
+            this.obj.target(1, 2, 3, this.callback);
+
+            this.target.should.have.been.calledWithExactly(
+              this.wa
+            , this.wb
+            , this.wc
+            , sinon.match.func
+            );
+          });
+
+          it('invokes in the target context', function () {
+            this.obj.target(1, 2, 3, this.callback);
+
+            this.target.lastCall.thisValue.should.equal(this.obj);
+          });
+
+          describe('when the wrapped target errors', function () {
+
+            beforeEach(function () {
+              this.error = new Error('wrap-target-error');
+              this.target.yields(this.error);
+            });
+
+            it('calls back with the error', function () {
+              this.obj.target(1, 2, 3, this.callback);
+
+              this.callback.should.have.been.calledWithExactly(this.error);
+            });
+
+          });
+
+          describe('when the wrapped target succeeds', function () {
+
+            beforeEach(function () {
+              this.result = new Error('wrap-target-result');
+              this.target.yields(null, this.result);
+            });
+
+            it('passes the result to the wrapper', function () {
+              this.obj.target(1, 2, 3, this.callback);
+
+              this.rv.should.equal(this.result);
+            });
+
+            describe('when the wrapper calls back', function () {
+
+              it('supplies a result to the wrapped caller', function (done) {
+                this.obj.target(1, 2, 3, function (err, result) {
+                  result.should.equal(this.wrv);
+                  done();
+                }.bind(this));
               });
 
             });
