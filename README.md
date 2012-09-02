@@ -18,9 +18,9 @@ __advisable.js__ is tested in a Node.js environment and supports CommonJS or AMD
 
 The following usage examples are, quite obviously, contrived to show advice usage with simple arithmetic. In all examples, the object mixing in advisable methods is referred to as the target object, and the method receiving advice is the target method. All examples can be found and executed in [examples/advisable.js](https://github.com/repeatingbeats/advisable/blob/master/examples/advisable.js)
 
-The `mutate` option allows advice callers to declare whether or not advice mutates arguments and return values. `mutate` defaults to false and the options object may be omitted entirely. Note that this option specifically refers to argument/return value mutation, as advice methods are invoked in the context of the target object, which is mutable within all advice methods.
+The `mutate` option allows advice callers to declare whether or not advice mutates arguments and return values. `mutate` defaults to false and the options object may be omitted entirely. Note that this option specifically refers to argument/return value mutation, as advice methods are invoked in the context of the target object, which is mutable within all advice methods. The `mutate` option can be used with all methods except `wrap` and `wrapSync`.
 
-advisable's around advice is a syntactic shortcut for advising a target with both before and after advise in a single method call. This is unlike some other implementations, which pass the target function to a wrapper and expect the wrapper to invoke the target.
+advisable's around advice is a syntactic shortcut for advising a target with both before and after advice in a single method call. This is unlike some other implementations, which pass the target function to a wrapper and expect the wrapper to invoke the target. `wrapSync` and `wrap` can be used for wrapping behavior.
 
 First, we set up a very simple object with sync and async methods to advise:
 
@@ -128,6 +128,24 @@ Around advice that mutates arguments and return value:
     // ((10*3) + (100*3) + 1) + 123 => 454
     target.syncFunc(10, 100);
 
+Synchronous method wrapping:
+
+    target = new Target(1);
+    target.wrapSync('syncFunc', function (wrapped, a, b) {
+      var targetRv;
+
+      this.val++;
+
+      // `wrapped` is the target method and will be invoked in the target
+      // object context
+      targetRv = wrapped(a * 3, b * 3);
+
+      return targetRv + 123;
+    });
+
+    // ((10*3) + (100*3) + 1 + 1) + 123 => 455
+    target.syncFunc(10, 100);
+
 ### Asynchronous Usage
 
 First, without advice:
@@ -222,6 +240,27 @@ Around advice that mutates arguments and return value:
 
     target.asyncFunc(10, 100, function (err, result) {
       // result = ((10*3) + (100*3) + 1) + 123 => 454
+    });
+
+Asynchronous method wrapping:
+
+    target = new Target(1);
+    target.wrap('asyncFunc', function (wrapped, a, b, callback) {
+      this.val++;
+
+      // `wrapped` is the target method and will be invoked in the target
+      // object context
+      wrapped(a * 3, b * 3, function (err, result) {
+        if (err) return callback(err);
+
+        process.nextTick(function () {
+          callback(null, result + 123);
+        });
+      });
+    });
+
+    target.asyncFunc(10, 100, function (err, result) {
+      // result = ((10*3) + (100*3) + 1 + 1) + 123 => 455
     });
 
 ## API
